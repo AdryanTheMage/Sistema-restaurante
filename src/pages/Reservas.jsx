@@ -13,7 +13,8 @@ import {
   CalendarRange,
   XCircle,
   HelpCircle,
-  Play
+  Play,
+  AlertCircle
 } from 'lucide-react';
 
 export default function Reservas({ triggerToast, onReservationChange, openWaitingPromotionPrompt }) {
@@ -26,6 +27,7 @@ export default function Reservas({ triggerToast, onReservationChange, openWaitin
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [formData, setFormData] = useState({
     id_cliente: '',
     id_mesa: '',
@@ -131,7 +133,7 @@ export default function Reservas({ triggerToast, onReservationChange, openWaitin
       loadData();
       if (onReservationChange) onReservationChange();
     } catch (err) {
-      triggerToast('destructive', 'Erro de Validação', err.message || 'Erro ao criar reserva.');
+      triggerToast('destructive', 'Falha ao Reservar', err.message || 'Verifique se a mesa já está ocupada ou o cliente bloqueado.');
     }
   };
 
@@ -160,11 +162,14 @@ export default function Reservas({ triggerToast, onReservationChange, openWaitin
         if (res.filaSugestao && openWaitingPromotionPrompt) {
           openWaitingPromotionPrompt(res.filaSugestao);
         }
+      } else if (statusAction === 'Deletar') {
+        await apiService.deleteReserva(id);
+        triggerToast('success', 'Reserva Deletada', `Reserva #${id} foi removida permanentemente.`);
       }
       loadData();
       if (onReservationChange) onReservationChange();
     } catch (err) {
-      triggerToast('destructive', 'Transição Inválida', err.message || 'Erro ao transicionar status.');
+      triggerToast('destructive', 'Operação Inválida', err.message || 'Erro ao processar a reserva.');
     }
   };
 
@@ -309,6 +314,14 @@ export default function Reservas({ triggerToast, onReservationChange, openWaitin
                               >
                                 <XCircle size={14} />
                               </button>
+                              <button 
+                                className="btn btn-outline btn-sm btn-icon" 
+                                onClick={() => setDeleteConfirmation(r.id)}
+                                title="Deletar Reserva Permanentemente"
+                                style={{ borderColor: 'hsl(var(--destructive) / 0.4)', color: 'hsl(var(--destructive))' }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </>
                           )}
                           {r.status === 'Confirmada' && (
@@ -346,7 +359,16 @@ export default function Reservas({ triggerToast, onReservationChange, openWaitin
                             </button>
                           )}
                           {['Finalizada', 'Cancelada', 'No Show'].includes(r.status) && (
-                            <span style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))', paddingRight: '0.5rem' }}>Encerrada</span>
+                            <>
+                              <span style={{ fontSize: '0.8rem', color: 'hsl(var(--muted-foreground))', paddingRight: '0.5rem' }}>Encerrada</span>
+                              <button 
+                                className="btn btn-destructive btn-sm btn-icon" 
+                                onClick={() => setDeleteConfirmation(r.id)}
+                                title="Deletar Reserva Permanentemente"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -358,6 +380,47 @@ export default function Reservas({ triggerToast, onReservationChange, openWaitin
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation && (
+        <div className="modal-backdrop">
+          <div className="modal-content animate-fade-in" style={{ maxWidth: '450px' }}>
+            <div className="modal-header" style={{ borderBottom: '2px solid hsl(var(--destructive) / 0.2)', paddingBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <AlertCircle size={24} style={{ color: 'hsl(var(--destructive))' }} />
+                <h3 style={{ margin: 0 }}>Confirmar Exclusão</h3>
+              </div>
+              <button className="toast-close" onClick={() => setDeleteConfirmation(null)}>×</button>
+            </div>
+            <div className="modal-body" style={{ padding: '1.5rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '1rem', marginBottom: '0.5rem', fontWeight: '500', color: 'hsl(var(--foreground))' }}>
+                Deletar a reserva <strong>#{deleteConfirmation}</strong>?
+              </p>
+              <p style={{ fontSize: '0.9rem', color: 'hsl(var(--muted-foreground))', marginTop: '0.75rem' }}>
+                Esta ação é <strong>permanente</strong> e não pode ser desfeita. O histórico da reserva será removido.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', padding: '1rem', borderTop: '1px solid hsl(var(--border))' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => setDeleteConfirmation(null)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-destructive" 
+                onClick={() => {
+                  handleTransition(deleteConfirmation, 'Deletar');
+                  setDeleteConfirmation(null);
+                }}
+              >
+                <Trash2 size={16} style={{ marginRight: '0.5rem' }} />
+                Deletar Permanentemente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Modal */}
       {isModalOpen && (

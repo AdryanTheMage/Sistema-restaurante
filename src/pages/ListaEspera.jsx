@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
 import { Plus, Search, Trash2, ArrowUpRight, Clock, User, Users, Calendar } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function ListaEspera({ triggerToast, onWaitlistChange }) {
   const [waitlist, setWaitlist] = useState([]);
@@ -14,6 +15,7 @@ export default function ListaEspera({ triggerToast, onWaitlistChange }) {
   const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [promoTableId, setPromoTableId] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const [formData, setFormData] = useState({
     id_cliente: '',
@@ -73,19 +75,25 @@ export default function ListaEspera({ triggerToast, onWaitlistChange }) {
       loadData();
       if (onWaitlistChange) onWaitlistChange();
     } catch (err) {
-      triggerToast('destructive', 'Erro de Validação', err.message || 'Erro ao entrar na lista de espera.');
+      triggerToast('destructive', 'Não foi possível adicionar', err.message || 'Verifique se o cliente não está bloqueado e tente novamente.');
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Deseja remover este cliente da lista de espera?')) return;
+  const handleDelete = (id) => {
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
     try {
-      await apiService.deleteWaitingEntry(id);
+      await apiService.deleteWaitingEntry(deleteConfirm);
       triggerToast('success', 'Sucesso', 'Entrada da lista de espera removida.');
       loadData();
       if (onWaitlistChange) onWaitlistChange();
     } catch (err) {
-      triggerToast('destructive', 'Erro', err.message || 'Erro ao remover da lista de espera.');
+      triggerToast('destructive', 'Falha ao Remover', err.message || 'Erro ao remover da lista de espera.');
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -347,6 +355,14 @@ export default function ListaEspera({ triggerToast, onWaitlistChange }) {
           </form>
         </div>
       )}
+
+      <ConfirmDialog 
+        isOpen={!!deleteConfirm} 
+        title="Remover da Fila" 
+        message="Tem certeza que deseja remover este cliente da lista de espera? Esta ação não pode ser desfeita." 
+        onConfirm={confirmDelete} 
+        onCancel={() => setDeleteConfirm(null)} 
+      />
     </div>
   );
 }

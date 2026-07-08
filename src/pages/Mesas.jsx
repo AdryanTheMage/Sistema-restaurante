@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
 import { Plus, Edit2, Trash2, LayoutGrid, List, ShieldAlert, Sparkles } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function Mesas({ triggerToast, onTableChange }) {
   const [tables, setTables] = useState([]);
@@ -11,6 +12,7 @@ export default function Mesas({ triggerToast, onTableChange }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTable, setEditingTable] = useState(null);
   const [formData, setFormData] = useState({ numero: '', capacidade: '', localizacao: 'Salão Principal', status: 'disponivel' });
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   async function loadTables() {
     setLoading(true);
@@ -50,15 +52,21 @@ export default function Mesas({ triggerToast, onTableChange }) {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Tem certeza que deseja remover esta mesa?')) return;
+  const handleDelete = (id) => {
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
     try {
-      await apiService.deleteTable(id);
+      await apiService.deleteTable(deleteConfirm);
       triggerToast('success', 'Sucesso', 'Mesa removida com sucesso!');
       loadTables();
       if (onTableChange) onTableChange();
     } catch (err) {
-      triggerToast('destructive', 'Erro de Validação', err.message || 'Erro ao remover mesa.');
+      triggerToast('destructive', 'Não foi possível remover', err.message || 'Erro ao remover mesa. Ela pode ter reservas pendentes.');
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -91,7 +99,7 @@ export default function Mesas({ triggerToast, onTableChange }) {
       loadTables();
       if (onTableChange) onTableChange();
     } catch (err) {
-      triggerToast('destructive', 'Erro de Validação', err.message || 'Erro ao salvar mesa.');
+      triggerToast('destructive', 'Falha ao Salvar Mesa', err.message || 'Verifique se o número da mesa já existe e tente novamente.');
     }
   };
 
@@ -321,6 +329,14 @@ export default function Mesas({ triggerToast, onTableChange }) {
           </form>
         </div>
       )}
+
+      <ConfirmDialog 
+        isOpen={!!deleteConfirm} 
+        title="Remover Mesa" 
+        message="Tem certeza que deseja remover esta mesa? Isso apagará todas as reservas associadas a ela e não pode ser desfeito." 
+        onConfirm={confirmDelete} 
+        onCancel={() => setDeleteConfirm(null)} 
+      />
     </div>
   );
 }

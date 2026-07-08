@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
 import { History, Trash2, HelpCircle, ShieldCheck, CalendarRange, Clock, Settings, AlertTriangle, Sparkles } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function HistoricoLogs({ triggerToast, refreshTrigger }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('logs'); // logs, regras
+  const [showConfirm, setShowConfirm] = useState(false);
 
   async function loadLogs() {
     setLoading(true);
@@ -23,14 +25,19 @@ export default function HistoricoLogs({ triggerToast, refreshTrigger }) {
     loadLogs();
   }, [refreshTrigger]);
 
-  const handleClearLogs = async () => {
-    if (!window.confirm('Tem certeza que deseja limpar o histórico de logs de auditoria?')) return;
+  const handleClearLogs = () => {
+    setShowConfirm(true);
+  };
+
+  const confirmClearLogs = async () => {
     try {
       await apiService.clearLogs();
       triggerToast('success', 'Histórico Limpo', 'Os logs foram reiniciados.');
       loadLogs();
     } catch (err) {
       triggerToast('destructive', 'Erro', 'Erro ao limpar logs.');
+    } finally {
+      setShowConfirm(false);
     }
   };
 
@@ -268,6 +275,14 @@ export default function HistoricoLogs({ triggerToast, refreshTrigger }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog 
+        isOpen={showConfirm} 
+        title="Limpar Histórico" 
+        message="Tem certeza que deseja limpar todo o histórico de logs de auditoria? Esta ação é permanente." 
+        onConfirm={confirmClearLogs} 
+        onCancel={() => setShowConfirm(false)} 
+      />
     </div>
   );
 }

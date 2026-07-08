@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/apiService';
 import { Plus, Search, Edit2, Trash2, ShieldAlert, User, Phone, Mail } from 'lucide-react';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function Clientes({ triggerToast, onClientChange }) {
   const [clients, setClients] = useState([]);
@@ -11,6 +12,7 @@ export default function Clientes({ triggerToast, onClientChange }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [formData, setFormData] = useState({ nome: '', telefone: '', email: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const handlePhoneChange = (e) => {
     let v = e.target.value.replace(/\D/g, '');
@@ -51,15 +53,21 @@ export default function Clientes({ triggerToast, onClientChange }) {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Tem certeza que deseja remover este cliente?')) return;
+  const handleDelete = (id) => {
+    setDeleteConfirm(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
     try {
-      await apiService.deleteClient(id);
+      await apiService.deleteClient(deleteConfirm);
       triggerToast('success', 'Sucesso', 'Cliente removido com sucesso!');
       loadClients();
       if (onClientChange) onClientChange();
     } catch (err) {
-      triggerToast('destructive', 'Erro de Validação', err.message || 'Erro ao remover cliente.');
+      triggerToast('destructive', 'Não foi possível remover', err.message || 'Este cliente pode possuir reservas associadas.');
+    } finally {
+      setDeleteConfirm(null);
     }
   };
 
@@ -82,7 +90,7 @@ export default function Clientes({ triggerToast, onClientChange }) {
       loadClients();
       if (onClientChange) onClientChange();
     } catch (err) {
-      triggerToast('destructive', 'Erro', err.message || 'Erro ao salvar cliente.');
+      triggerToast('destructive', 'Falha no Cadastro', err.message || 'Verifique se os dados inseridos estão corretos.');
     }
   };
 
@@ -277,6 +285,14 @@ export default function Clientes({ triggerToast, onClientChange }) {
           </form>
         </div>
       )}
+
+      <ConfirmDialog 
+        isOpen={!!deleteConfirm} 
+        title="Remover Cliente" 
+        message="Tem certeza que deseja remover este cliente? Esta ação não pode ser desfeita e pode afetar o histórico." 
+        onConfirm={confirmDelete} 
+        onCancel={() => setDeleteConfirm(null)} 
+      />
     </div>
   );
 }

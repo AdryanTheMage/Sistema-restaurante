@@ -50,7 +50,14 @@ async function fetchAPI(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data?.mensagem || data?.message || 'Erro de comunicação com a API.');
+    let errorDetail = data?.mensagem || data?.message;
+    if (!errorDetail) {
+      if (response.status === 404) errorDetail = 'O recurso solicitado não foi encontrado no servidor.';
+      else if (response.status >= 400 && response.status < 500) errorDetail = 'Os dados enviados são inválidos ou a operação não é permitida pelas regras de negócio.';
+      else if (response.status >= 500) errorDetail = 'O servidor encontrou um erro interno inesperado. Tente novamente mais tarde.';
+      else errorDetail = `Falha de comunicação com a API (Status ${response.status}). Verifique a conexão com o banco de dados.`;
+    }
+    throw new Error(errorDetail);
   }
 
   // Interceptor: Mapeia as chaves do C# (PascalCase/camelCase) para snake_case pro React
@@ -139,6 +146,7 @@ export const apiService = {
   getReservaById: (id) => fetchAPI(`/reservas/${id}`),
   createReserva: (reservaData) => fetchAPI('/reservas', { method: 'POST', body: JSON.stringify(reservaData) }),
   updateReserva: (id, reservaData) => fetchAPI(`/reservas/${id}`, { method: 'PUT', body: JSON.stringify(reservaData) }),
+  deleteReserva: (id) => fetchAPI(`/reservas/${id}`, { method: 'DELETE' }),
   confirmarReserva: (id) => fetchAPI(`/reservas/${id}/confirmar`, { method: 'PUT' }),
   cancelarReserva: (id) => fetchAPI(`/reservas/${id}/cancelar`, { method: 'PUT' }),
   noShowReserva: (id) => fetchAPI(`/reservas/${id}/no-show`, { method: 'PUT' }),
